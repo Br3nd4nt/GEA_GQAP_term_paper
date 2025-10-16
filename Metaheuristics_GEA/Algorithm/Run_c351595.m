@@ -44,20 +44,20 @@ Heuristic2.CPU=toc;
 for j = 1:Repeat
     Solution=Heuristic2;
 
-    display('.........run GEA_1.........');
-    [Ans(j,1).MinCost, Ans(j,1).BestCost, pop_GEA1, time]=Algorithm_GA_Quadratic(Solution, Info, [1,0,0]);
-    Ans(j,1).CPU=time
-    Ans(j,1).Gap_GEA1=(Heuristic2.Cost-Ans(j,1).MinCost)/Heuristic2.Cost
-
-    display('.........run GEA_2.........');
-    [Ans(j,2).MinCost, Ans(j,2).BestCost, pop_GEA2, time]=Algorithm_GA_Quadratic(Solution, Info, [0,1,0]);
-    Ans(j,2).CPU=time
-    Ans(j,2).Gap_GEA2=(Heuristic2.Cost-Ans(j,2).MinCost)/Heuristic2.Cost
-
-    display('.........run GEA_3.........');
-    [Ans(j,3).MinCost, Ans(j,3).BestCost, pop_GEA3, time]=Algorithm_GA_Quadratic(Solution, Info, [0,0,1]);
-    Ans(j,3).CPU=time
-    Ans(j,3).Gap_GEA3=(Heuristic2.Cost-Ans(j,3).MinCost)/Heuristic2.Cost
+    % display('.........run GEA_1.........');
+    % [Ans(j,1).MinCost, Ans(j,1).BestCost, pop_GEA1, time]=Algorithm_GA_Quadratic(Solution, Info, [1,0,0]);
+    % Ans(j,1).CPU=time
+    % Ans(j,1).Gap_GEA1=(Heuristic2.Cost-Ans(j,1).MinCost)/Heuristic2.Cost
+    % 
+    % display('.........run GEA_2.........');
+    % [Ans(j,2).MinCost, Ans(j,2).BestCost, pop_GEA2, time]=Algorithm_GA_Quadratic(Solution, Info, [0,1,0]);
+    % Ans(j,2).CPU=time
+    % Ans(j,2).Gap_GEA2=(Heuristic2.Cost-Ans(j,2).MinCost)/Heuristic2.Cost
+    % 
+    % display('.........run GEA_3.........');
+    % [Ans(j,3).MinCost, Ans(j,3).BestCost, pop_GEA3, time]=Algorithm_GA_Quadratic(Solution, Info, [0,0,1]);
+    % Ans(j,3).CPU=time
+    % Ans(j,3).Gap_GEA3=(Heuristic2.Cost-Ans(j,3).MinCost)/Heuristic2.Cost
 
     display('.........run GEA.........');
     [Ans(j,4).MinCost, Ans(j,4).BestCost, pop_GEA, time]=Algorithm_GA_Quadratic(Solution, Info, [1,1,1]);

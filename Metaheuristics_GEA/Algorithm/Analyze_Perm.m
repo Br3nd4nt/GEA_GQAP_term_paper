@@ -1,46 +1,18 @@
 function [DominantGenes, Mask, DominantChromosome, Mask_Dominant]=Analyze_Perm(pop,Info)
 %% Data Definition
 Npop=size(pop,1);
-n=size(pop(1).Position1,2);
-NFixedX=floor(Info.PFixedX*Npop);
-Mask=zeros(Info.PScenario1*Info.Npop, n);
+% n=size(pop(1).Position1,2);
+% NFixedX=floor(Info.PFixedX*Npop);
+% Mask=zeros(Info.PScenario1*Info.Npop, n);
 %% Find Dominant Gene
-row=1;
-while(row<=Npop)
-    col=1;
-    while(col<n)
-        row_inner=1;
-        temp=0;
-        while(row_inner<=Npop)
-            if (row==row_inner)
-                row_inner=row_inner+1;
-                continue
-            end
-
-            if (pop(row).Position1(1,col) == pop(row_inner).Position1(1,col))
-                if (pop(row).Position1(1,col+1) == pop(row_inner).Position1(1,col+1))
-                    temp=temp+1;
-                end
-            end
-            row_inner=row_inner+1;
-        end
-
-        if (temp>=NFixedX)
-            Mask(row, col) = 1;
-            Mask(row, col+1) = 1;
-            col=col+2;
-        else
-            col=col+1;
-        end
-    end
-    row=row+1;
-end
+Mask = vectorized_mask_creation(pop, floor(Info.PFixedX * Info.PScenario1 * Npop));
 
 %% Create Ans :
 count = 0;
 Domin = [];
 Mask_Dominant = [];
-for i=1:Npop
+%% for i=1:Npop
+for i=1:length(Mask)
     temp=sum(Mask(i,:)==1);
     % Mask(i,:);
     if (temp>=count)
