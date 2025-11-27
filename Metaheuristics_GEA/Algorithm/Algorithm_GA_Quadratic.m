@@ -170,9 +170,16 @@ for It=1:Info.Iteration
         % Evaluation
         [popm(k).Cost, popm(k).Xij, popm(k).CVAR]=CostFunction(popm(k).Xij, Info.Model);
 
-        popm(k).delta = (pop(mutation_index).Cost - popm(k).Cost) / (pop(mutation_index).Cost + alpha);
+        if popm(k).Cost == Inf || popm(k).Cost == -Inf || pop(mutation_index).Cost == Inf || pop(mutation_index).Cost == -Inf
+            popm(k).delta = 0;
+        else
+            popm(k).delta = (pop(mutation_index).Cost - popm(k).Cost) / (pop(mutation_index).Cost + epsilon);
+        end
 
-        delta_averages(2) = delta_averages(2) + popm(k).delta;
+        if popm(k).delta == Inf || popm(k).delta == -Inf
+        else 
+            delta_averages(2) = delta_averages(2) + popm(k).delta;
+        end
     end
 
     delta_averages(2) = delta_averages(2) / number_of_mutation_iterations;
@@ -204,10 +211,27 @@ for It=1:Info.Iteration
 
             better_parent_cost = min(pop__(1).Cost, pop__(2).Cost);
 
-            pop_sc1(k).delta = (better_parent_cost - pop_sc1(k).Cost) / (better_parent_cost + epsilon);
-            pop_sc1(k + 1).delta = (better_parent_cost - pop_sc1(k + 1).Cost) / (better_parent_cost + epsilon);
+            if pop_sc1(k).Cost == Inf || pop_sc1(k).Cost == -Inf || ...
+               better_parent_cost == Inf || better_parent_cost == -Inf
+                pop_sc1(k).delta = 0;
+            else
+                pop_sc1(k).delta = (better_parent_cost - pop_sc1(k).Cost) / ...
+                                   (better_parent_cost + epsilon);
+            end
+            
+            if pop_sc1(k+1).Cost == Inf || pop_sc1(k+1).Cost == -Inf || ...
+               better_parent_cost == Inf || better_parent_cost == -Inf
+                pop_sc1(k+1).delta = 0;
+            else
+                pop_sc1(k+1).delta = (better_parent_cost - pop_sc1(k+1).Cost) / ...
+                                     (better_parent_cost + epsilon);
+            end
+            
+            best_offspring_delta = min(pop_sc1(k).delta, pop_sc1(k+1).delta);
 
-            best_offspring_delta = min(pop_sc1(k).delta, pop_sc1(k + 1).delta);
+            if best_offspring_delta == Inf || best_offspring_delta == -Inf
+                best_offspring_delta = 0;
+            end
 
             delta_averages(3) = delta_averages(3) + best_offspring_delta;
         end
@@ -239,9 +263,19 @@ for It=1:Info.Iteration
             % evaluate
             [pop_sc2(i).Cost, pop_sc2(i).Xij, pop_sc2(i).CVAR]=CostFunction(pop_sc2(i).Xij, Info.Model);
 
-            pop_sc2(i).delta = (parent.Cost - pop_sc2(i).Cost) / (parent.Cost + epsilon);
+            if pop_sc2(i).Cost == Inf || pop_sc2(i).Cost == -Inf || ...
+               parent.Cost == Inf || parent.Cost == -Inf
+                pop_sc2(i).delta = 0;
+            else
+                pop_sc2(i).delta = (parent.Cost - pop_sc2(i).Cost) / ...
+                                   (parent.Cost + epsilon);
+            end
 
-            delta_averages(4) = delta_averages(4) + pop_sc2(i).delta;
+            if pop_sc2(i).delta == Inf || pop_sc2(i).delta == -Inf
+            else 
+                delta_averages(4) = delta_averages(4) + pop_sc2(i).delta;
+            end
+
         end
 
         delta_averages(4) = delta_averages(4) / number_of_scenario_2_iterations;
@@ -269,9 +303,18 @@ for It=1:Info.Iteration
             % evaluate
             [pop_sc3(z).Cost, pop_sc3(z).Xij, pop_sc3(z).CVAR]=CostFunction(pop_sc3(z).Xij, Info.Model);     
 
-            pop_sc3(z).delta = (parent.Cost - pop_sc3(z).Cost) / (parent.Cost + epsilon);
+            if pop_sc3(z).Cost == Inf || pop_sc3(z).Cost == -Inf || ...
+               parent.Cost == Inf || parent.Cost == -Inf
+                pop_sc3(z).delta = 0;
+            else
+                pop_sc3(z).delta = (parent.Cost - pop_sc3(z).Cost) / ...
+                                   (parent.Cost + epsilon);
+            end
 
-            delta_averages(5) = delta_averages(5) + pop_sc3(z).delta;
+            if pop_sc3(z).delta == Inf || pop_sc3(z).delta == -Inf
+            else 
+                delta_averages(5) = delta_averages(5) + pop_sc3(z).delta;
+            end
         end
 
         delta_averages(5) = delta_averages(5) / number_of_scenario_3_iterations;
