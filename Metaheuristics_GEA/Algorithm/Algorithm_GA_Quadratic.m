@@ -17,9 +17,22 @@ individual.Position1=[];
 individual.Xij=[];
 individual.Cost=[];
 individual.CVAR=[];
+individual.delta = 0; % adaptive learning value
+
 pop=repmat(individual,Info.Npop,1);
-popc=repmat(individual,NCrossover,1);
-popm=repmat(individual,NMutation,1);
+% popc=repmat(individual,NCrossover,1);
+% popm=repmat(individual,NMutation,1);
+
+% Adaptive learning parameters
+% TODO: move into Info struct
+epsilon = 1e-5; % small value for the case of dividing by zero
+alpha = .01; % constant - rate of lambda growth
+gamma = .5; % population selection
+lambda_min = .4;
+lambda_max = 1.5;
+
+lambdas = [1, 1, 1, 1, 1];
+delta_averages = [0, 0, 0, 0, 0];
 
 if(Instraction(1))
     temp_Scens=repmat(individual,NCrossover_Scenario*2,1);
@@ -81,13 +94,31 @@ for It=1:Info.Iteration
     P=P/sum(P);
     
     %% Crossover
-    for k=1:2:NCrossover
+
+    number_of_crossover_iterations = 2 * floor(NCrossover / 2 * lambdas(1));
+    popc=repmat(individual,number_of_crossover_iterations,1);
+
+    for k=1:2:number_of_crossover_iterations
 
         i1=RouletteWheelSelection(P);
+
+        %TODO: Figure out Inf/-Inf situations
+
+        while pop(i1).Cost == Inf || pop(i1).Cost == -Inf
+            i1=RouletteWheelSelection(P);
+        end
+
+
         i2=RouletteWheelSelection(P);
+
+        while pop(i2).Cost == Inf || pop(i2).Cost == -Inf
+            i2=RouletteWheelSelection(P);
+        end
 
         pop_(1)=pop(i1);
         pop_(2)=pop(i2);
+
+        better_parent_cost = min(pop_(1).Cost, pop_(2).Cost);
 
         [popc(k).Position1, popc(k+1).Position1]=Crossover(pop_, Info.Model);
         
@@ -99,11 +130,39 @@ for It=1:Info.Iteration
         [popc(k).Cost, popc(k).Xij, popc(k).CVAR]=CostFunction(popc(k).Xij, Info.Model);
 
         [popc(k+1).Cost, popc(k+1).Xij, popc(k+1).CVAR]=CostFunction(popc(k+1).Xij, Info.Model);
+
+        if popc(k, 1).Cost == Inf 
+            popc(k, 1).delta = Inf;
+        else 
+            popc(k, 1).delta = (better_parent_cost - popc(k,1).Cost) / (better_parent_cost + epsilon);
+        end
+
+        if popc(k+1, 1).Cost == Inf 
+            popc(k+1, 1).delta = Inf;
+        else 
+            popc(k+1, 1).delta = (better_parent_cost - popc(k+1,1).Cost) / (better_parent_cost + epsilon);
+        end
+
+        best_offspring_delta = min(popc(k, 1).delta, popc(k+1).delta);
+        
+        if best_offspring_delta == Inf || best_offspring_delta == -Inf
+            best_offspring_delta = 0;
+        end
+        delta_averages(1) = delta_averages(1) + best_offspring_delta;
     end
+
+    delta_averages(1) = delta_averages(1) / number_of_crossover_iterations;
     
     %% Mutation
-    for k=1:NMutation
-        popm(k).Position1=Mutation(pop(randsample(1:Info.Npop,1)).Position1 ,Info.Model);
+
+    number_of_mutation_iterations = ceil(NMutation * lambdas(2));
+    popm=repmat(individual,number_of_mutation_iterations,1);
+
+    for k=1:number_of_mutation_iterations
+
+        mutation_index = randsample(1:Info.Npop,1);
+
+        popm(k).Position1=Mutation(pop(mutation_index).Position1 ,Info.Model);
 
         % Create Xij
         [popm(k).Position1, popm(k).Xij] = CreateXij(popm(k).Position1, Info.Model);
@@ -111,59 +170,111 @@ for It=1:Info.Iteration
         % Evaluation
         [popm(k).Cost, popm(k).Xij, popm(k).CVAR]=CostFunction(popm(k).Xij, Info.Model);
 
+        popm(k).delta = (pop(mutation_index).Cost - popm(k).Cost) / (pop(mutation_index).Cost + alpha);
+
+        delta_averages(2) = delta_averages(2) + popm(k).delta;
     end
+
+    delta_averages(2) = delta_averages(2) / number_of_mutation_iterations;
     
 
     %% scenario 1 : Dominated Gen
     if(Instraction(1))
+
+        number_of_scenario_1_iterations = 2 * floor(NCrossover_Scenario * lambdas(3));
+
         [DominantGenes,Mask, DominantChromosome,Mask_Dominant]=Analyze_Perm(pop(1:(Info.PScenario1*Info.Npop)),Info);
-        Mask;
-        for k=1:2:NCrossover_Scenario*2
+
+        pop_sc1=repmat(individual,number_of_scenario_1_iterations,1);
+
+        for k=1:2:number_of_scenario_1_iterations
             i1=RouletteWheelSelection(P);
+
             pop__(1)=DominantChromosome;
             pop__(2)=pop(i1);
-            [temp_Scens(k).Position1 temp_Scens(k+1).Position1]=Crossover(pop__, Info.Model);
+            [pop_sc1(k).Position1, pop_sc1(k+1).Position1]=Crossover(pop__, Info.Model);
 
             % Create Xij for new offspring
-            [temp_Scens(k).Position1, temp_Scens(k).Xij] = CreateXij(temp_Scens(k).Position1, Info.Model);
-            [temp_Scens(k+1).Position1, temp_Scens(k+1).Xij] = CreateXij(temp_Scens(k+1).Position1, Info.Model);
+            [pop_sc1(k).Position1, pop_sc1(k).Xij] = CreateXij(pop_sc1(k).Position1, Info.Model);
+            [pop_sc1(k+1).Position1, pop_sc1(k+1).Xij] = CreateXij(pop_sc1(k+1).Position1, Info.Model);
 
             % evaluate
-            [temp_Scens(k).Cost, temp_Scens(k).Xij, temp_Scens(k).CVAR]=CostFunction(temp_Scens(k).Xij, Info.Model);
-            [temp_Scens(k+1).Cost, temp_Scens(k+1).Xij, temp_Scens(k+1).CVAR]=CostFunction(temp_Scens(k+1).Xij, Info.Model);
+            [pop_sc1(k).Cost, pop_sc1(k).Xij, pop_sc1(k).CVAR]=CostFunction(pop_sc1(k).Xij, Info.Model);
+            [pop_sc1(k+1).Cost, pop_sc1(k+1).Xij, pop_sc1(k+1).CVAR]=CostFunction(pop_sc1(k+1).Xij, Info.Model);
+
+            better_parent_cost = min(pop__(1).Cost, pop__(2).Cost);
+
+            pop_sc1(k).delta = (better_parent_cost - pop_sc1(k).Cost) / (better_parent_cost + epsilon);
+            pop_sc1(k + 1).delta = (better_parent_cost - pop_sc1(k + 1).Cost) / (better_parent_cost + epsilon);
+
+            best_offspring_delta = min(pop_sc1(k).delta, pop_sc1(k + 1).delta);
+
+            delta_averages(3) = delta_averages(3) + best_offspring_delta;
         end
+
+        delta_averages(3) = delta_averages(3) / number_of_scenario_1_iterations;
     end
+
+    % TODO: add the pop_sc1 to population!!!
     
     %% scenario 2 : mask mutation in goods
-    L=0;
     if(Instraction(2))
+
+        number_of_scenario_2_iterations = NMutate_Scenario*lambdas(4);
+
         [~,Mask,~,~]=Analyze_Perm(pop(1:(Info.PScenario2*Info.Npop)),Info);
-        for i=1:NMutate_Scenario
+
+        pop_sc2=repmat(individual,number_of_scenario_2_iterations,1);
+
+        for i=1:number_of_scenario_2_iterations
             ii = randsample(1:(Info.PScenario2*Info.Npop),1);
-            temp_Scens(L+i).Position1 = MaskMutation(Info.MaskMutationIndex,pop(ii).Position1,Mask(ii,:),Info.Model);
+
+            parent = pop(ii);
+
+            pop_sc2(i).Position1 = MaskMutation(Info.MaskMutationIndex,parent.Position1,Mask(ii,:),Info.Model);
             
             % Create Xij for new offspring
-            [temp_Scens(L+i).Position1, temp_Scens(L+i).Xij] = CreateXij(temp_Scens(L+i).Position1, Info.Model);
+            [pop_sc2(i).Position1, pop_sc2(i).Xij] = CreateXij(pop_sc2(i).Position1, Info.Model);
 
             % evaluate
-            [temp_Scens(L+i).Cost, temp_Scens(L+i).Xij, temp_Scens(L+i).CVAR]=CostFunction(temp_Scens(L+i).Xij, Info.Model);
+            [pop_sc2(i).Cost, pop_sc2(i).Xij, pop_sc2(i).CVAR]=CostFunction(pop_sc2(i).Xij, Info.Model);
+
+            pop_sc2(i).delta = (parent.Cost - pop_sc2(i).Cost) / (parent.Cost + epsilon);
+
+            delta_averages(4) = delta_averages(4) + pop_sc2(i).delta;
         end
+
+        delta_averages(4) = delta_averages(4) / number_of_scenario_2_iterations;
     end
     
     %% scenario 3 : inject good gens
-    L=0;
     if(Instraction(3))
+
+        number_of_scenario_3_iterations = NMutate_Scenario * lambdas(5);
+
         [DominantGenes,Mask,~, Mask_Dominant]=Analyze_Perm(pop(1:(Info.PScenario3*Info.Npop)),Info);
-        for z=1:NMutate_Scenario
+
+        pop_sc3 = repmat(individual, number_of_scenario_3_iterations, 1);
+
+        for z=1:number_of_scenario_3_iterations
             jj = randsample(size(pop,1)-(Info.PScenario3*Info.Npop):size(pop,1),1);
-            temp_Scens(L+z).Position1 = CombineQ(DominantGenes.Position1.Position1,pop(jj).Position1,Mask_Dominant,Info.Model);
+
+            parent = pop(jj);
+
+            pop_sc3(z).Position1 = CombineQ(DominantGenes.Position1.Position1,parent.Position1,Mask_Dominant,Info.Model);
                         
             % Create Xij for new offspring
-            [temp_Scens(L+z).Position1, temp_Scens(L+z).Xij] = CreateXij(temp_Scens(L+z).Position1, Info.Model);
+            [pop_sc3(z).Position1, pop_sc3(z).Xij] = CreateXij(pop_sc3(z).Position1, Info.Model);
 
             % evaluate
-            [temp_Scens(L+z).Cost, temp_Scens(L+z).Xij, temp_Scens(L+z).CVAR]=CostFunction(temp_Scens(L+z).Xij, Info.Model);        
+            [pop_sc3(z).Cost, pop_sc3(z).Xij, pop_sc3(z).CVAR]=CostFunction(pop_sc3(z).Xij, Info.Model);     
+
+            pop_sc3(z).delta = (parent.Cost - pop_sc3(z).Cost) / (parent.Cost + epsilon);
+
+            delta_averages(5) = delta_averages(5) + pop_sc3(z).delta;
         end
+
+        delta_averages(5) = delta_averages(5) / number_of_scenario_3_iterations;
     end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -214,6 +325,7 @@ for It=1:Info.Iteration
     
    % Show Iteration Information
     disp(['Iteration ' num2str(It)  ', Best Cost = ' num2str(BestCost(It))]);
+    disp(delta_averages)
     time = toc;
     if time>=1000
         break;
