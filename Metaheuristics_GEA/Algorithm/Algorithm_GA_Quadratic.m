@@ -34,18 +34,13 @@ lambda_max = 1.5;
 lambdas = [1, 1, 1, 1, 1];
 delta_averages = [0, 0, 0, 0, 0];
 
-if(Instraction(1))
-    temp_Scens=repmat(individual,NCrossover_Scenario*2,1);
-elseif(Instraction(2))
-    temp_Scens=repmat(individual,NMutate_Scenario,1);
-elseif(Instraction(3))
-    temp_Scens=repmat(individual,NMutate_Scenario,1);
-end
+pop_sc1 = repmat(individual,0,1);
+pop_sc2 = repmat(individual,0,1);
+pop_sc3 = repmat(individual,0,1);
 
-if (Instraction(1) && Instraction(2) && Instraction(3))
-    temp_Scens=repmat(individual,(NCrossover_Scenario*2)+NMutate_Scenario+NMutate_Scenario, 1);
-end
-
+% for plotting
+delta_history = zeros(Info.Iteration, 5);
+lambda_history = zeros(Info.Iteration, 5);
 
 % BestSol=Solution;
 
@@ -84,7 +79,6 @@ pop=pop(1:Info.Npop);
 BestSol=pop(1);
 WorstCost=pop(end).Cost;
 beta=10;         % Selection Pressure (Roulette Wheel)
-
 tic;
 %% GA Main loop
 for It=1:Info.Iteration
@@ -244,7 +238,7 @@ for It=1:Info.Iteration
     %% scenario 2 : mask mutation in goods
     if(Instraction(2))
 
-        number_of_scenario_2_iterations = NMutate_Scenario*lambdas(4);
+        number_of_scenario_2_iterations = ceil(NMutate_Scenario*lambdas(4));
 
         [~,Mask,~,~]=Analyze_Perm(pop(1:(Info.PScenario2*Info.Npop)),Info);
 
@@ -284,7 +278,7 @@ for It=1:Info.Iteration
     %% scenario 3 : inject good gens
     if(Instraction(3))
 
-        number_of_scenario_3_iterations = NMutate_Scenario * lambdas(5);
+        number_of_scenario_3_iterations = ceil(NMutate_Scenario * lambdas(5));
 
         [DominantGenes,Mask,~, Mask_Dominant]=Analyze_Perm(pop(1:(Info.PScenario3*Info.Npop)),Info);
 
@@ -319,7 +313,18 @@ for It=1:Info.Iteration
 
         delta_averages(5) = delta_averages(5) / number_of_scenario_3_iterations;
     end
-    
+    temp_Scens = [pop_sc1;pop_sc2;pop_sc3];
+
+    for operation=1:5
+        % - alpha because we are minimizing?
+        lambdas(operation) = max(lambda_min, min(lambda_max, lambdas(operation) - alpha * delta_averages(operation)));
+        
+        lambda_history(It, operation) = lambdas(operation);
+        delta_history(It, operation) = delta_averages(operation);
+
+        delta_averages(operation) = 0;
+    end
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Calculate the contrubution share for Sensitivity Analysis GEA_3  %%%%%%%%%%%%%%
     index_pop = [1:Info.Npop];
@@ -368,7 +373,6 @@ for It=1:Info.Iteration
     
    % Show Iteration Information
     disp(['Iteration ' num2str(It)  ', Best Cost = ' num2str(BestCost(It))]);
-    disp(delta_averages)
     time = toc;
     if time>=1000
         break;
@@ -378,4 +382,7 @@ end
 time;    
 Ans=pop(1).Cost;
 Solution=BestSol; 
+
+PlotValues(lambda_history, delta_history);
+
 end

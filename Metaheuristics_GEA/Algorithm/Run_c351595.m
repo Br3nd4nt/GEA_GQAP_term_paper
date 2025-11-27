@@ -4,7 +4,7 @@ addpath('.././');
 AddPaths('.././');
 
 %% Parameter
-Info.Iteration=1000;
+Info.Iteration=100;
 Info.Npop=350;
 Info.PCrossover=0.7;
 Info.PMutation=0.3;
@@ -24,7 +24,7 @@ Info.PScenario3=0.5;
 Info.Instraction=[1,1,1];
 
 %% Run Ga
-Repeat=30;
+Repeat=1;
 MyStruct.MinCost=[];
 MyStruct.BestCost=[];
 Ans=repmat(MyStruct,Repeat,4);
